@@ -119,3 +119,77 @@ class Robot(object):
             return self.occupy_prob
         else:
             return self.free_prob
+        
+    def wall_follow(self, desired_distance=1.0, min_speed=1.0, max_speed=5.0, kp=0.5):
+        """
+        Adjusts the robot's motion to follow walls at a specified distance.
+        Uses a proportional controller to determine the turn rate based on 
+        the difference between left and right sensor readings.
+
+        :param desired_distance: Desired distance to keep from the wall (default: 1.0 meter)
+        :param min_speed: minimum forward speed (default: 5.0)
+        :param max_speed: maximum forward speed (default: 5.0)
+        :param kp: Proportional control gain for turning (default: 0.5)
+
+        :return forward: forward control input
+        :return turn: turn control input
+        """
+        # Get sensor readings (z_star) using the sense method
+        # z_star, _, _ = self.sense()
+        # Define the number of sensors used for each direction
+        # sensors_per_direction = self.num_sensors // 4
+        # # Group the sensor readings into four directions (front, right, back, left)
+        # front = z_star[0:sensors_per_direction]
+        # right = z_star[sensors_per_direction:2 * sensors_per_direction]
+        # back  = z_star[2 * sensors_per_direction:3 * sensors_per_direction]
+        # left  = z_star[3 * sensors_per_direction:self.num_sensors]
+        # # Compute the average distance for each direction
+        # avg_front = np.mean(front)
+        # avg_left = np.mean(left)
+        # avg_right = np.mean(right)
+        # avg_back = np.mean(back)
+        # # Use left sensors for wall following
+        # left_error = desired_distance - avg_left
+        # # Proportional control to calculate the turning rate
+        # turn = kp * (left_error)
+        # # Check if there's an obstacle in front
+        # if avg_front < 20:  # Adjust threshold based on robot's sensing range
+        #     forward_speed = 1  # Slow down if an obstacle is close
+        # else:
+        #     forward_speed = forward_speed  # Normal speed
+        # self.move(turn=turn, forward=forward_speed)
+        # print(f"Avg Front: {avg_front:.2f}, Avg Right: {avg_right:.2f}, Avg Back: {avg_back:.2f}, Avg Left: {avg_left:.2f}")
+        # Optional: Print averaged sensor data for debugging
+        # print(f"Wall Follow - Forward: {forward_command}, Turn: {turn_rate}")
+
+        ## version 2
+        z, _, _ = self.sense()  # get sensor data
+        num_groups = 4
+        sensors_per_direction = self.num_sensors // num_groups
+        left_avg  = np.mean(z[0:sensors_per_direction])                             # -135 to -45 degrees
+        back_avg  = np.mean(z[sensors_per_direction:2 * sensors_per_direction])     # -45 to 45 degrees
+        right_avg = np.mean(z[2 * sensors_per_direction:3 * sensors_per_direction]) # 45 to 135 degrees
+        front_avg = np.mean(z[3 * sensors_per_direction:])                          # 135 to 225 degrees
+        # l = z[sensors_per_direction * 0.5]  # left sensor
+        # b = z[sensors_per_direction * 1.5]  # back sensor
+        # r = z[sensors_per_direction * 2.5]  # right sensor
+        # f = z[sensors_per_direction * 3.5]  # front sensor
+        error = desired_distance - left_avg
+        turn = kp * error  # Proportional control for turning
+        forward = max_speed - kp * abs(turn)
+        forward = max(min_speed, min(forward, max_speed))
+        # Adjust for obstacles detected in front
+        if front_avg < desired_distance:
+            # If an obstacle is detected, stop and turn
+            turn += kp * (desired_distance - front_avg)  # Increase turn to avoid collision
+            forward = min_speed  # Stop or slow down
+        # If the left wall is too far away, turn toward it
+        elif left_avg > desired_distance + 5:  # Allow for some tolerance
+            turn += kp * (desired_distance + 5 - left_avg)  # Adjust turn to move closer to the wall
+        # If the left wall is too close, turn away
+        elif left_avg < desired_distance - 5:  # Allow for some tolerance
+            turn += kp * (desired_distance - 5 - left_avg)  # Adjust turn to move away from the wall
+        # print(f"Front: {front_avg}, right: {right_avg}, Back: {left_avg}, Left: {back_avg}")
+        print(f"Wall Following: Forward {forward:.2f}, Turn {turn:.2f}")
+        self.move(turn,forward)
+        return (turn, forward)

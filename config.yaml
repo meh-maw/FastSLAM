@@ -3,7 +3,7 @@ robot:
   occupy_prob: 0.9
   free_prob: 0.35
 
-  num_sensors: 20
+  num_sensors: 16
   radar_length: 200
   radar_range: 210
 
@@ -12,6 +12,7 @@ motion_model:
   alpha2: 0.005
   alpha3: 0.01
   alpha4: 0.01
+  wheelbase: 0.2
 
 measurement_model:
   p_hit: 0.8
